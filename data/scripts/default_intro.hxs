@@ -1,0 +1,121 @@
+var bg:FlxSprite;
+var icon:FlxSprite;
+var timer:FlxTimer;
+var modName:String;
+var bounds:Dynamic;
+var introDuration:Float = 1.5;
+var outroDuration:Float = 0.3;
+var finishing:Bool = false;
+var introSound = null;
+
+function create() {
+    modName = parent.modName;
+    bounds = parent.overlayBounds;
+    introDuration = parent.getIntroDuration(1.5);
+
+    if (FlxG.sound.music != null) {
+        FlxG.sound.music.stop();
+    }
+    trace('[DEFAULT_INTRO] start transition');
+
+    bg = new FlxSprite(0, 0);
+    bg.makeGraphic(FlxG.width, FlxG.height + 100, FlxColor.BLACK);
+    bg.alpha = 0;
+    bg.scrollFactor.set();
+    parent.insertBehindOverlay(bg);
+
+    icon = new FlxSprite();
+    var iconPath = 'mods/' + modName + '/meta/icon.png';
+
+    if (sys.FileSystem.exists(iconPath)) {
+        icon.loadGraphic(openfl.display.BitmapData.fromFile(iconPath));
+    } else {
+        icon.loadGraphic(Paths.image("no-icon"));
+    }
+
+    icon.setGraphicSize(200, 200);
+    icon.updateHitbox();
+    icon.screenCenter();
+    icon.scale.set(0, 0);
+    parent.add(icon);
+
+    trace('[DEFAULT_INTRO] objects created');
+}
+
+function start() {
+    trace('[DEFAULT_INTRO] starting tweens');
+    var enterSoundPath = parent.resolveAddonFile('sounds/enter.ogg');
+    if (sys.FileSystem.exists(enterSoundPath)) {
+        introSound = FlxG.sound.play(Sound.fromFile(enterSoundPath));
+        if (introSound != null && introSound.length > 0) {
+            introDuration = Math.max(introDuration, introSound.length / 1000);
+        }
+    }
+
+    FlxTween.tween(bg, {alpha: 1}, 0.25, {ease: FlxEase.cubeIn});
+    FlxTween.tween(icon.scale, {x: 0.3, y: 0.3}, 0.5, {ease: FlxEase.backOut});
+
+    timer = new FlxTimer().start(Math.max(0.05, introDuration - outroDuration), function(_) {
+        trace('[DEFAULT_INTRO] timer complete');
+        startOutro();
+    });
+}
+
+function startOutro() {
+    if (finishing) return;
+    finishing = true;
+    parent.fadeMenuBackgroundsForOutro();
+
+    FlxTween.cancelTweensOf(bg);
+    FlxTween.cancelTweensOf(icon);
+    FlxTween.cancelTweensOf(icon.scale);
+
+    FlxTween.tween(bg, {alpha: 0}, outroDuration, {ease: FlxEase.cubeInOut});
+    FlxTween.tween(icon, {alpha: 0}, outroDuration, {ease: FlxEase.cubeInOut});
+    FlxTween.tween(icon.scale, {x: 0.22, y: 0.22}, outroDuration, {
+        ease: FlxEase.cubeInOut,
+        onComplete: function(_) {
+            parent.finishIntro(modName);
+        }
+    });
+}
+
+function cancel() {
+    trace('[DEFAULT_INTRO] cancel called');
+    finishing = false;
+    if (timer != null) {
+        timer.cancel();
+        timer = null;
+    }
+
+    if (introSound != null) {
+        var soundToStop = introSound;
+        FlxTween.cancelTweensOf(soundToStop);
+        FlxTween.tween(soundToStop, {volume: 0}, 0.15, {
+            onComplete: function(_) {
+                soundToStop.stop();
+            }
+        });
+        introSound = null;
+    }
+
+    if (bg != null) {
+        FlxTween.cancelTweensOf(bg);
+        parent.remove(bg, true);
+        bg.destroy();
+        bg = null;
+    }
+
+    if (icon != null) {
+        FlxTween.cancelTweensOf(icon);
+        FlxTween.cancelTweensOf(icon.scale);
+        parent.remove(icon, true);
+        icon.destroy();
+        icon = null;
+    }
+}
+
+function finish() {
+    trace('[DEFAULT_INTRO] finish called');
+    cancel();
+}

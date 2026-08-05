@@ -1,0 +1,53 @@
+package modlauncher;
+
+import flixel.FlxG;
+
+import funkin.modding.module.ModuleHandler;
+import funkin.modding.module.ScriptedModule;
+import funkin.ui.mainmenu.MainMenuState;
+
+class Injector extends ScriptedModule {
+	public function new() {
+		super("modlauncher.Injector", 2147483647);
+	}
+	
+	/**
+	 * Just in case you want to temporarily disable modlauncher injection.
+	 */
+	public var dontInject:Bool = false;
+	
+	override public function onStateChangeBegin(event:StateChangeScriptEvent):Void {
+		destroy();
+	}
+	
+	override public function onStateChangeEnd(event:StateChangeScriptEvent):Void {
+		if (Std.isOfType(event.targetState, MainMenuState)) {
+			tryInject();
+		}
+	}
+	
+	private var injected:Bool = false;
+	private function tryInject():Void {
+		if (injected || dontInject) {
+			return;
+		}
+		
+		ModuleHandler.getModule("modlauncher.menus.LauncherMenu").scriptCall("setup");
+		
+		injected = true;
+	}
+	
+	private function destroy():Void {
+		if (!injected) {
+			return;
+		}
+		
+		ModuleHandler.getModule("modlauncher.menus.LauncherMenu").scriptCall("destroy");
+		
+		injected = false;
+	}
+	
+	override public function onDestroy(event:ScriptEvent):Void {
+		destroy();
+	}
+}

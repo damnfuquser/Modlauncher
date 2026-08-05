@@ -1,0 +1,18 @@
+{
+	"title": "modlauncher",
+	"description": "ingame launcher for fnf mod states",
+	"homepage": "https://github.com/cyn0x8/modlauncher",
+	
+	"contributors": [
+		{"name": "cyn0x8", "role": "coder"}
+	],
+	
+	"license": "MIT",
+	
+	"api_version": "0.8.0",
+	"mod_version": "4.0.0",
+	
+	"dependencies": {
+		"beast-engine": ">=1.0.0-0 <2.0.0-0"
+	}
+}

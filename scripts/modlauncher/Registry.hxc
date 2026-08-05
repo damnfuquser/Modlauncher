@@ -1,0 +1,348 @@
+package modlauncher;
+
+import Float;
+import String;
+import StringTools;
+
+import haxe.ds.StringMap;
+
+import thx.Types;
+
+import funkin.modding.module.ScriptedModule;
+
+/**
+ * Data to use for your mod's launcher banner.
+ * 
+ * Intended to be passed into `bind`, and then the same struct will be passed back into its callbacks with a few extra fields for the banner.
+ * So, if you add to this struct in one of your callbacks, it will carry over into the other callbacks.
+ */
+typedef LauncherData = {
+	/**
+	 * The name of your mod as it will appear in the launcher.
+	 */
+	name:String,
+	
+	/**
+	 * Full class name of the `ScriptedMusicBeatState` you want to open after your mod is selected.
+	 * For example, `"exampleMod.states.InitState"`.
+	 */
+	target:String,
+	
+	/**
+	 * The path to your mod's logo (will be passed into `Paths.image`).
+	 * 
+	 * Defaults to the modlauncher icon.
+	 */
+	logoPath:String,
+	
+	/**
+	 * The path to your mod's select sound (will be passed into `Paths.sound`).
+	 * 
+	 * Defaults to `"confirmMenu"`.
+	 */
+	selectSoundPath:Null<String>,
+	
+	/**
+	 * The time in seconds from when the player selcts your mod to the end of the state transition, minimum `1.5`.
+	 * 
+	 * The selection is cancellable until `0.5` seconds before this duration (when the state transition starts).
+	 * 
+	 * Defaults to `1.5`.
+	 */
+	selectDuration:Null<Float>,
+	
+	/**
+	 * Callback to run when modlauncher is injected into the main menu.
+	 * 
+	 * Useful for setting up your mod banner in the launcher.
+	 */
+	onSetup:Null<(LauncherData)->Void>,
+	
+	/**
+	 * Callback to run every frame while the launcher is open.
+	 * 
+	 * Useful for animating your banner
+	 * 
+	 * The 2nd parameter is delta-time in seconds.
+	 */
+	onUpdate:Null<(LauncherData, Float)->Void>,
+	
+	/**
+	 * Callback to run when your mod is "focused" on.
+	 */
+	onFocus:Null<(LauncherData)->Void>,
+	
+	/**
+	 * Callback to run when another mod is focused on away from yours.
+	 */
+	onUnfocus:Null<(LauncherData)->Void>,
+	
+	/**
+	 * Callback to run when your mod is initially selected, before the state transition starts.
+	 */
+	onSelect:Null<(LauncherData)->Void>,
+	
+	/**
+	 * Callback to run when your mod selection is cancelled before the state transition starts.
+	 */
+	onCancel:Null<(LauncherData)->Void>,
+	
+	/**
+	 * Callback to run after your mod is selected, and right before your target state is initialized.
+	 * 
+	 * Useful for "initializing" your mod if you're not using an initialization state (I recommend the latter, though).
+	 */
+	onInit:Null<(LauncherData)->Void>,
+	
+	/**
+	 * The camera of your mod's banner in the launcher.
+	 * The size you have to work with is 1280x450.
+	 * 
+	 * Only available in the callback functions.
+	 */
+	camera:Null<FunkinCamera>,
+	
+	/**
+	 * The background group of your mod's banner.
+	 * 
+	 * Only available in the callback functions.
+	 */
+	groupBG:Null<FlxTypedSpriteGroup>,
+	
+	/**
+	 * The UI group of your mod's banner.
+	 * 
+	 * Only available in the callback functions.
+	 */
+	groupUI:Null<FlxTypedSpriteGroup>,
+	
+	/**
+	 * The logo sprite of your mod's banner, part of `groupUI`.
+	 * Initially auto-resized to 350px height.
+	 * 
+	 * Only available in the callback functions.
+	 */
+	logo:Null<FunkinSprite>
+}
+
+/**
+ * Registry module for modlauncher.
+ * 
+ * Example:
+ * ```haxe
+ * package exampleMod;
+ * 
+ * import flixel.addons.display.FlxBackdrop;
+ * import flixel.tweens.FlxEase;
+ * import flixel.tweens.FlxTween;
+ * 
+ * import funkin.graphics.FunkinSprite;
+ * import funkin.modding.module.ModuleHandler;
+ * import funkin.modding.module.ScriptedModule;
+ * 
+ * class LauncherBinding extends ScriptedModule {
+ *     public function new() {
+ *         super("exampleMod.LauncherBinding");
+ *     }
+ *     
+ *     override public function onCreate(event:ScriptEvent):Void {
+ *         active = false;
+ *         
+ *         tryBindModlauncher();
+ *         // Bind to other FNF mod launchers as well? Up to you...
+ *         
+ *         hook();
+ *     }
+ *     
+ *     private function hook():Void {
+ *         ModuleHandler.getModule("be.reloader.Reloader").scriptGet("reloadPre").set("exampleMod.LauncherBinding", {
+ *             callback: "onReload"
+ *         });
+ *     }
+ *     
+ *     public function onReload():Void {
+ *         tryBindModlauncher();
+ *         // Bind to other FNF mod launchers as well? Up to you...
+ *         
+ *         hook();
+ *     }
+ *     
+ *     private var bound:Bool = false; 
+ *     public function tryBindModlauncher():Void {
+ *         if (bound) {
+ *             return;
+ *         }
+ *         
+ *         if (ModuleHandler.getModule("modlauncher.Registry") != null) {
+ *             ModuleHandler.getModule("modlauncher.Registry").scriptCall("bind", [{
+ *                 name: "Example Mod",
+ *                 
+ *                 target: "exampleMod.states.InitState",
+ *                 
+ *                 logoPath: "exampleMod/logo",
+ *                 
+ *                 selectSoundPath: "exampleMod/launcherSelectSound",
+ *                 selectSoundLength: 2.5,
+ *                 
+ *                 onSetup: function(data:Dynamic):Void {
+ *                     data.camera.bgColor = 0xff808080;
+ *                     
+ *                     data.logo.scale.set(0.5, 0.5);
+ *                     data.logo.updateHitbox();
+ *                     
+ *                     var mySprite:FunkinSprite = new FunkinSprite().loadTexture("exampleMod/mySprite");
+ *                     mySprite.visible = false;
+ *                     data.groupBG.add(mySprite);
+ *                     data.mySprite = mySprite;
+ *                     
+ *                     var overlay:FlxBackdrop = new FlxBackdrop().makeGraphic(2, 2, 0xffffffff);
+ *                     overlay.scale.set(640, 325);
+ *                     overlay.color = 0xff000000;
+ *                     overlay.alpha = 0;
+ *                     data.groupUI.add(overlay);
+ *                     data.overlay = overlay;
+ *                 },
+ *                 
+ *                 onUpdate: function(data:Dynamic, elapsed:Float):Void {
+ *                     data.mySprite.angle += 90 * elapsed;
+ *                 },
+ *                 
+ *                 onFocus: function(data:Dynamic):Void {
+ *                     FlxTween.globalManager.cancelTweensOf(data.overlay, ["alpha"]);
+ *                     FlxTween.tween(data.overlay, {alpha: 1}, 0.5, {ease: FlxEase.cubeIn, onComplete: function():Void {
+ *                         data.mySprite.visible = true;
+ *                         
+ *                         FlxTween.tween(data.overlay, {alpha: 0}, 0.5, {ease: FlxEase.cubeOut});
+ *                     });
+ *                 },
+ *                 
+ *                 onUnfocus: function(data:Dynamic):Void {
+ *                     FlxTween.globalManager.cancelTweensOf(data.overlay, ["alpha"]);
+ *                     FlxTween.tween(data.overlay, {alpha: 1}, 0.5, {ease: FlxEase.cubeIn, onComplete: function():Void {
+ *                         data.mySprite.visible = false;
+ *                         
+ *                         FlxTween.tween(data.overlay, {alpha: 0}, 0.5, {ease: FlxEase.cubeOut});
+ *                     });
+ *                 },
+ *                 
+ *                 onSelect: function(data:Dynamic):Void {
+ *                     data.camera.flash(0xffffffff, 0.5, null, true);
+ *                     
+ *                     FlxTween.globalManager.cancelTweensOf(data.logo.scale, ["x", "y"]);
+ *                     data.logo.scale.set(0.45, 0.45);
+ *                     FlxTween.tween(data.logo.scale, {x: 0.75, y: 0.75}, 1.5, {ease: FlxEase.expoOut});
+ *                 },
+ *                 
+ *                 onCancel: function(data:Dynamic):Void {
+ *                     FlxTween.globalManager.cancelTweensOf(data.logo.scale, ["x", "y"]);
+ *                     FlxTween.tween(data.logo.scale, {x: 0.5, y: 0.5}, 0.5, {ease: FlxEase.expoOut});
+ *                 },
+ *                 
+ *                 onInit: function(data:Dynamic):Void {
+ *                     ModuleHandler.getModule("exampleMod.Globals").scriptSet("myVariable", true);
+ *                 }
+ *             }]);
+ *             
+ *             bound = true;
+ *         }
+ *     }
+ * }
+ * ```
+ */
+class Registry extends ScriptedModule {
+	public function new() {
+		super("modlauncher.Registry", -2147483648);
+	}
+	
+	/**
+	 * Internal registry of all bound `LauncherData`.
+	 */
+	public var registry:StringMap<Dynamic> = new StringMap();
+	
+	/**
+	 * Bind your mod to the launcher.
+	 * 
+	 * @param data The `LauncherData` to use for your mod.
+	 * @return The validated data you passed in, or existing data if your mod is already bound, or `null` if the data is invalid.
+	 */
+	public function bind(data:LauncherData):Null<LauncherData> {
+		if (!Types.isAnonymousObject(data)) {
+			return null;
+		}
+		
+		data.name = validateString(data.name);
+		if (data.name == null) {
+			return null;
+		}
+		
+		if (registry.exists(data.name)) {
+			return registry.get(data.name);
+		}
+		
+		data.target = validateString(data.target);
+		if (data.target == null) {
+			return null;
+		}
+		
+		data = {
+			name: data.name,
+			target: data.target,
+			logoPath: validateString(data.logoPath, "modlauncher/meta/icon"),
+			selectSoundPath: validateString(data.selectSoundPath, "confirmMenu"),
+			selectDuration: Math.max(1.5, validateFloat(data.selectDuration, 1.5)),
+			
+			onSetup: data.onSetup == null ? function(data:LauncherData):Void {} : data.onSetup,
+			onUpdate: data.onUpdate == null ? function(data:LauncherData, elapsed:Float):Void {} : data.onUpdate,
+			onFocus: data.onFocus == null ? function(data:LauncherData):Void {} : data.onFocus,
+			onUnfocus: data.onUnfocus == null ? function(data:LauncherData):Void {} : data.onUnfocus,
+			onSelect: data.onSelect == null ? function(data:LauncherData):Void {} : data.onSelect,
+			onCancel: data.onCancel == null ? function(data:LauncherData):Void {} : data.onCancel,
+			onInit: data.onInit == null ? function(data:LauncherData):Void {} : data.onInit
+		};
+		
+		registry.set(data.name, data);
+		
+		trace("modlauncher: Bound mod \"" + data.name + "\".");
+		
+		return data;
+	}
+	
+	private function validateString(input:Null<String>, ?defaultTo:String):Null<String> {
+		var valid:Bool = true;
+		if (input == null || !Std.isOfType(input, String)) {
+			valid = false;
+		}
+		
+		input = StringTools.trim(StringTools.replace(input, "\n", ""));
+		if (input == "") {
+			valid = false;
+		}
+		
+		if (!valid) {
+			if (defaultTo == null) {
+				return;
+			} else {
+				input = defaultTo;
+			}
+		}
+		
+		return input;
+	}
+	
+	private function validateFloat(input:Null<Float>, ?defaultTo:Float):Null<Float> {
+		var valid:Bool = true;
+		if (input == null || !Std.isOfType(input, Float)) {
+			valid = false;
+		}
+		
+		if (!valid) {
+			if (defaultTo == null) {
+				return;
+			} else {
+				input = defaultTo;
+			}
+		}
+		
+		return input;
+	}
+}
